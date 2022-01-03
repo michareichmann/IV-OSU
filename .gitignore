@@ -1,4 +1,6 @@
-data/
-.idea/
-*.pdf
-*.jpg
+*
+!*/
+
+!*.py
+!*.md
+!requirements.txt
