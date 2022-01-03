@@ -1,0 +1,7 @@
+###### Requirements without Version Specifiers ######
+ipython
+numpy
+uncertainties
+h5py
+pytz
+screeninfo
