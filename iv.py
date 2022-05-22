@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from glob import glob
-from numpy import genfromtxt, loadtxt, abs, min, max, log10
+from numpy import genfromtxt, loadtxt, abs, min, max, log10, argmax
 from plotting.save import *
 from re import split as txtsplit
 import h5py
@@ -94,6 +94,9 @@ class IV(object):
 
     # -----------------------------
     # region DRAW
+    def tits(self, i):
+        return {'y_tit': f'Current {self.Units[i]}', 'x_tit': 'Voltage [V]'}
+
     def draw_expo(self, i=0, n=1, fit_start=50):
         y = self.get_current(i)[n] * self.Factors[i]
         g = self.Draw.graph(arange(y.size), y, x_tit='Time [s]', y_tit='Current {}'.format(self.Units[i]))
@@ -131,15 +134,14 @@ class IV(object):
         self.Draw.graph(x, y, **prep_kw(dkw, **self.v_args(i)), markersize=.7, grid=True, center_x=True, center_y=True, y_range=[min(y[y > 0]) / 2, max(abs(y)) * 2], logy=True,
                         title=self.get_title(i), **Draw.mode(2))
 
-    def draw_same(self, i=0, n_last=50):
+    def draw_same(self, i=0, n_last=50, **dkw):
         """ plot mean currents of the last [n_last] data points vs voltage. flips negative to pos voltage """
         x, y = self.get_voltage(i), self.get_mean_current(i, n_last)
-        data = array([[abs(x[cut]), sign(x[cut]) * y[cut]] for cut in [x < 0, x > 0]])
-        graphs = [self.Draw.make_tgrapherrors(*idata, color=col) for idata, col in zip(data, [2, 1])]
-        mg = self.Draw.multigraph(graphs, f'IV for {self.get_title(i)}', ['Negative Bias', 'Positive Bias'], markersize=.8, grid=True, w=2, lm=.08, bm=.2, logy=True, leg_left=True)
-        v = concatenate(data[:, 1])
-        format_histo(mg, tit_size=.05, lab_size=.045, y_range=[min(v[v > 0]) / 2, max(v) * 2], y_off=.8, y_tit='Current {}'.format(self.Units[i]), x_tit='Voltage [V]', center_x=True,
-                     center_y=True)
+        i0 = argmax(x < 0)
+        x, y = [abs(x[:i0]), abs(x[i0 - 1:])], [y[:i0], concatenate([[y[i0 - 1]], -1 * y[i0:-1], y[-1:]])]
+        graphs = [self.Draw.make_tgrapherrors(x[i], y[i], color=col, markersize=.8) for i, col in enumerate([2, 1])]
+        tits = f'IV for {self.get_title(i)}', ['Negative Bias', 'Positive Bias']
+        return self.Draw.multigraph(graphs, *tits, **prep_kw(dkw, **Draw.mode(2), grid=True, **self.tits(i), y_range=[0, 1.2 * max(concatenate(y))]))
 
     def draw_diff(self, i=0, n_last=50):
         x, y = self.get_diff(i, n_last)
